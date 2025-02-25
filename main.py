@@ -35,6 +35,8 @@ if __name__ == "__main__":
 
     #Add new search key into array ["cat","t-shirt","apple","orange","pear","fish"]
     search_keys = list(set(["car","stars"]))
+    # search_keys = list(set(["orchard","nut orchard", "california nut orchard","almond orchard","walnut orchard","pecan orchard",
+    #                         "pistachio orchard","hazelnut orchard","chestnut orchard","peanut orchard"]))
 
     #Parameters
     number_of_images = 10                # Desired number of images
