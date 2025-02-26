@@ -34,17 +34,17 @@ if __name__ == "__main__":
     image_path = os.path.normpath(os.path.join(os.getcwd(), 'photos'))
 
     #Add new search key into array ["cat","t-shirt","apple","orange","pear","fish"]
-    search_keys = list(set(["car","stars"]))
-    # search_keys = list(set(["orchard","nut orchard", "california nut orchard","almond orchard","walnut orchard","pecan orchard",
-    #                         "pistachio orchard","hazelnut orchard","chestnut orchard","peanut orchard"]))
+    # search_keys = list(set(["car","stars"]))
+    search_keys = list(set(["trees in a row orchard","nut orchard", "orchard rows", "nut orchard in california in rows", "orchard trees",
+                             "california orchard tree trunks", "tree trunks in orchard rows"]))
 
     #Parameters
-    number_of_images = 10                # Desired number of images
-    headless = False                    # True = No Chrome GUI
+    number_of_images = 500                # Desired number of images
+    headless = True                    # True = No Chrome GUI
     min_resolution = (0, 0)             # Minimum desired image resolution
     max_resolution = (9999, 9999)       # Maximum desired image resolution
     max_missed = 10                     # Max number of failed images before exit
-    number_of_workers = 1               # Number of "workers" used
+    number_of_workers = 10               # Number of "workers" used
     keep_filenames = False              # Keep original URL image filenames
 
     #Run each search_key in a separate thread
