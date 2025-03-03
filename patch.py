@@ -5,9 +5,7 @@ Created on Sun May 23 14:44:43 2021
 @author: Yicong
 """
 #!/usr/bin/env python3
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import WebDriverException, SessionNotCreatedException
+# Required for other scripts that might import this module
 import sys
 import os
 import urllib.request
@@ -26,13 +24,12 @@ def webdriver_executable():
 def download_lastest_chromedriver(current_chrome_version=""):
     def get_platform_filename():
         filename = ''
-        is_64bits = sys.maxsize > 2**32
+        # is_64bits variable removed as it's not used
     
         if platform == "linux" or platform == "linux2":
             # linux
             filename += 'linux64'
-        
-        elif platform == "darwin":
+        elif platform == 'darwin':
             # OS X
             filename += 'mac-x64'
         elif platform == "win32":
@@ -69,8 +66,14 @@ def download_lastest_chromedriver(current_chrome_version=""):
         print('[INFO] downloading chromedriver ver: %s: %s'% (current_chrome_version, driver_url))
         file_name = driver_url.split("/")[-1]
         app_path = os.getcwd()
-        chromedriver_path = os.path.normpath(os.path.join(app_path, 'webdriver', webdriver_executable()))
-        file_path = os.path.normpath(os.path.join(app_path, 'webdriver', file_name))
+        webdriver_path = os.path.normpath(os.path.join(app_path, 'webdriver'))
+        chromedriver_path = os.path.normpath(os.path.join(webdriver_path, webdriver_executable()))
+        file_path = os.path.normpath(os.path.join(webdriver_path, file_name))
+        
+        # Create webdriver directory if it doesn't exist
+        if not os.path.exists(webdriver_path):
+            os.makedirs(webdriver_path)
+            
         urllib.request.urlretrieve(driver_url, file_path)
 
         # Unzip the file into folde
@@ -97,3 +100,6 @@ def download_lastest_chromedriver(current_chrome_version=""):
         print("[WARN] unable to download lastest chromedriver. the system will use the local version instead.")
     
     return result
+
+if __name__ == "__main__":
+    download_lastest_chromedriver()

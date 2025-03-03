@@ -6,15 +6,12 @@ Created on Sat Jul 18 13:01:02 2020
 """
 #import selenium drivers
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
 
 #import helper libraries
 import time
-import urllib.request
 from urllib.parse import urlparse
 import os
 import requests
@@ -26,8 +23,8 @@ import re
 import patch
 
 class GoogleImageScraper():
-    def __init__(self, webdriver_path, image_path, search_key="cat", number_of_images=1, headless=True, min_resolution=(0, 0), max_resolution=(1920, 1080), max_missed=10):
-        #check parameter types
+    def __init__(self, image_path, webdriver_path=None, search_key="cat", number_of_images=1, headless=True, min_resolution=(0, 0), max_resolution=(1920, 1080), max_missed=10):
+        # Check parameter types
         image_path = os.path.join(image_path, search_key)
         if (type(number_of_images)!=int):
             print("[Error] Number of images must be integer value.")
@@ -36,40 +33,90 @@ class GoogleImageScraper():
             print("[INFO] Image path not found. Creating a new folder.")
             os.makedirs(image_path)
             
-        #check if chromedriver is installed
-        if (not os.path.isfile(webdriver_path)):
-            is_patched = patch.download_lastest_chromedriver()
-            if (not is_patched):
-                exit("[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome version:https://chromedriver.chromium.org/downloads")
-
-        for i in range(1):
+        # Setup Chrome options
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--ignore-ssl-errors')
+        chrome_options.add_argument('--allow-insecure-localhost')
+        
+        # Set user agent
+        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
+        chrome_options.add_argument(f'user-agent={user_agent}')
+        
+        # Add headless option if specified
+        if headless:
+            chrome_options.add_argument('--headless')
+        
+        # Initialize driver
+        driver = None
+        
+        try:
+            # Check if webdriver_path exists or is None
+            if webdriver_path and not os.path.isfile(webdriver_path):
+                print(f"[INFO] ChromeDriver not found at {webdriver_path}. Downloading latest version...")
+                is_patched = patch.download_lastest_chromedriver()
+                if not is_patched:
+                    raise Exception("[ERR] Failed to download ChromeDriver")
+            
+            # Initialize Chrome driver
+            from selenium.webdriver.chrome.service import Service
+            
+            if webdriver_path and os.path.isfile(webdriver_path):
+                print(f"[INFO] Using ChromeDriver at: {webdriver_path}")
+                service = Service(executable_path=webdriver_path)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+            else:
+                print("[INFO] Using system ChromeDriver")
+                driver = webdriver.Chrome(options=chrome_options)
+            
+            # Set up browser session
+            driver.set_window_size(1000, 1050)
+            driver.get("https://www.google.com")
             try:
-                #try going to www.google.com
-                options = Options()
-                if(headless):
-                    options.add_argument('--headless')
-                driver = webdriver.Chrome(webdriver_path, chrome_options=options)
-                driver.set_window_size(1400,1050)
-                driver.get("https://www.google.com")
-                try:
-                    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "W0wltc"))).click()
-                except Exception as e:
-                    continue
-            except Exception as e:
-                #update chromedriver
-                pattern = '(\d+\.\d+\.\d+\.\d+)'
-                version = list(set(re.findall(pattern, str(e))))[0]
+                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "W0wltc"))).click()
+            except Exception:
+                print("[INFO] No cookie consent dialog found")
+        
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize Chrome driver: {e}")
+            
+            # Try to get Chrome version from error message
+            pattern = r'(\d+\.\d+\.\d+\.\d+)'
+            match = re.search(pattern, str(e))
+            if match:
+                version = match.group(1)
+                print(f"[INFO] Detected Chrome version: {version}. Downloading matching chromedriver...")
                 is_patched = patch.download_lastest_chromedriver(version)
-                if (not is_patched):
-                    exit("[ERR] Please update the chromedriver.exe in the webdriver folder according to your chrome version:https://chromedriver.chromium.org/downloads")
-
+                if is_patched:
+                    try:
+                        # Try again with updated driver
+                        from selenium.webdriver.chrome.service import Service
+                        service = Service(executable_path=webdriver_path)
+                        driver = webdriver.Chrome(service=service, options=chrome_options)
+                        driver.set_window_size(1000, 1050)
+                        driver.get("https://www.google.com")
+                        try:
+                            WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "W0wltc"))).click()
+                        except Exception:
+                            pass
+                    except Exception as inner_e:
+                        print(f"[ERROR] Failed to initialize Chrome driver after updating: {inner_e}")
+                else:
+                    print("[ERROR] Failed to download matching ChromeDriver")
+        
+        # Check if driver was initialized successfully
+        if not driver:
+            raise Exception("Failed to initialize Chrome driver. Please check if Chrome is installed and try again.")
+        
         self.driver = driver
         self.search_key = search_key
         self.number_of_images = number_of_images
         self.webdriver_path = webdriver_path
         self.image_path = image_path
-        self.url = "https://www.google.com/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947"%(search_key)
-        self.headless=headless
+        self.url = f"https://www.google.com/search?q={self.search_key}+site%3Ashutterstock.com&source=lnms&tbm=isch"
+        self.headless = headless
         self.min_resolution = min_resolution
         self.max_resolution = max_resolution
         self.max_missed = max_missed
